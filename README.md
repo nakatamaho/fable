@@ -38,17 +38,10 @@ Pick any directory you like for the checkout.
 mkdir -p ~/src
 cd ~/src
 
-# Clone your fork (replace with your actual fork URL)
-git clone <YOUR_FORK_URL> fable
+# Clone the repository
+git clone https://github.com/nakatamaho/fable.git fable
 cd fable
 ````
-
-Switch to a specific branch/tag if needed:
-
-```bash
-git fetch --all --tags
-git checkout <branch-or-tag>
-```
 
 ## Quick start: run `cout` via the wrapper
 
@@ -59,7 +52,64 @@ From inside the checkout:
 chmod +x ./fable.cout
 
 # Translate a Fortran file
-./fable.cout path/to/input.f > output.cpp
+$ ./fable.cout test/valid/data_01.f
+#include <fem.hpp> // Fortran EMulation library of fable module
+
+namespace placeholder_please_replace {
+
+using namespace fem::major_types;
+
+struct common :
+  fem::common
+{
+  fem::cmn_sve program_prog_sve;
+
+  common(
+    int argc,
+    char const* argv[])
+  :
+    fem::common(argc, argv)
+  {}
+};
+
+struct program_prog_save
+{
+  int num;
+
+  program_prog_save() :
+    num(fem::int0)
+  {}
+};
+
+void
+program_prog(
+  int argc,
+  char const* argv[])
+{
+  common cmn(argc, argv);
+  FEM_CMN_SVE(program_prog);
+  common_write write(cmn);
+  // SAVE
+  int& num = sve.num;
+  //
+  if (is_called_first_time) {
+    num = 3;
+  }
+  write(6, star), num;
+}
+
+} // namespace placeholder_please_replace
+
+int
+main(
+  int argc,
+  char const* argv[])
+{
+  return fem::main_with_catch(
+    argc, argv,
+    placeholder_please_replace::program_prog);
+
+}
 ```
 
 You can also invoke it explicitly via `bash`:
