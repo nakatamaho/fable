@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 def run(args):
   assert len(args) == 0
   import libtbx.load_env
-  from six.moves import StringIO
+  from io import StringIO
   import os
   op = os.path
   t_dir = libtbx.env.under_dist(

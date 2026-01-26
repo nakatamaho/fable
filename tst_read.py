@@ -933,7 +933,7 @@ def exercise_show():
     t_dir = libtbx.env.under_dist(
         module_name="fable", path="test/valid", test=op.isdir)
     all_fprocs = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
-    from six.moves import StringIO
+    from io import StringIO
     cio = StringIO()
     all_fprocs.show_counts_by_type(out=cio, prefix="$ ")
     assert not show_diff(cio.getvalue(), """\

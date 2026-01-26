@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import fable.cout
-from six.moves import zip
 
 file_names_disable_warnings = set("""\
 add_reals.f
@@ -153,7 +152,7 @@ class process_file_info(object):
         from libtbx import easy_run
         from libtbx.str_utils import show_string
         from libtbx.test_utils import show_diff
-        from six.moves import StringIO
+        from io import StringIO
         import os.path as op
         import sys
         opts = O.opts

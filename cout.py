@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
 from libtbx.utils import product
 from libtbx import group_args
 from libtbx import mutable
 from libtbx import Auto
 import os.path
-from six.moves import zip
 
 fmt_comma_placeholder = chr(255)
 
@@ -2677,7 +2675,7 @@ def generate_common_report(
         member_registry,
         variant_due_to_equivalence_common_names,
         stringio):
-    from six.moves import StringIO
+    from io import StringIO
     variant_common_names = set()
     if (stringio is None):
         report = StringIO()
