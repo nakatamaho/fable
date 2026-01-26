@@ -10,6 +10,107 @@ from fable import equivalence
 from fable import utils
 import sys
 
+class Sorry(Exception):
+    """Minimal replacement for libtbx.utils.Sorry."""
+    pass
+
+class dict_with_default_0(dict):
+    """dict that returns 0 for missing keys."""
+    def __missing__(self, key):
+        return 0
+
+class _TopoSort:
+    """
+    Standalone replacement for libtbx.topological_sort
+    providing stable() and strongly_connected_components().
+    """
+
+    def stable(self, connections):
+        """
+        Topologically sort nodes given (node, deps) pairs.
+
+        connections: iterable of (node, iterable_of_dependencies).
+        """
+        # assign a rank based on first appearance for stability
+        rank = {}
+        deps_by_node = {}
+        for node, deps in connections:
+            if node not in rank:
+                rank[node] = len(rank)
+            deps = list(deps)
+            deps_by_node[node] = deps
+            for d in deps:
+                if d not in rank:
+                    rank[d] = len(rank)
+
+        # build successor graph: dependency -> node
+        succs = {n: set() for n in rank}
+        indeg = {n: 0 for n in rank}
+        for node, deps in deps_by_node.items():
+            for d in deps:
+                succs.setdefault(d, set()).add(node)
+                indeg[node] += 1
+
+        # Kahn's algorithm, always pick smallest rank first
+        ready = [n for n, deg in indeg.items() if deg == 0]
+        ready.sort(key=lambda n: rank[n])
+        result = []
+        while ready:
+            n = ready.pop(0)
+            result.append(n)
+            for s in succs.get(n, ()):
+                indeg[s] -= 1
+                if indeg[s] == 0:
+                    ready.append(s)
+                    ready.sort(key=lambda x: rank[x])
+        return result
+
+    def strongly_connected_components(
+        self,
+        successors_by_node,
+        omit_single_node_components=True,
+    ):
+        """
+        Tarjan's strongly connected components algorithm.
+        successors_by_node: dict node -> iterable of successors.
+        """
+        index = {}
+        lowlink = {}
+        stack = []
+        on_stack = set()
+        result = []
+        counter = [0]
+
+        def visit(node):
+            if node in index:
+                return
+            idx = counter[0]
+            counter[0] += 1
+            index[node] = lowlink[node] = idx
+            stack.append(node)
+            on_stack.add(node)
+            for succ in successors_by_node.get(node, ()):
+                if succ not in index:
+                    visit(succ)
+                    lowlink[node] = min(lowlink[node], lowlink[succ])
+                elif succ in on_stack:
+                    lowlink[node] = min(lowlink[node], index[succ])
+            if lowlink[node] == idx:
+                comp = []
+                while True:
+                    w = stack.pop()
+                    on_stack.remove(w)
+                    comp.append(w)
+                    if w == node:
+                        break
+                if (not omit_single_node_components) or len(comp) > 1:
+                    result.append(tuple(comp))
+
+        for node in successors_by_node:
+            visit(node)
+        return result
+
+topological_sort = _TopoSort()
 
 class Error(Exception):
     pass
@@ -2698,7 +2799,6 @@ class fproc(fproc_p_methods):
         assert O.body_lines_processed_already
         result = O._fmt_counts_by_statement_label
         if (result is None):
-            from libtbx import dict_with_default_0
             result = dict_with_default_0()
             for ei in O.executable:
                 if (ei.key in ["read", "write", "print"] and ei.fmt_tokens is None):
@@ -3081,7 +3181,6 @@ class split_fprocs(object):
                             else:
                                 msg.append(name.format_error(
                                     msg="%d. definition" % len(msg), prefix="  "))
-                        from libtbx.utils import Sorry
                         raise Sorry("\n".join(msg))
                     O._fprocs_by_name[fproc.name.value] = fproc
                     if (fproc.name_plain is not None):
@@ -3202,7 +3301,6 @@ class build_bottom_up_fproc_list_following_calls(object):
                     connections_for_topological_sort.append(
                         (fproc.name.value, get_dependencies(fproc=fproc)))
         #
-        from libtbx import topological_sort
         successors_by_node = dict(connections_for_topological_sort)
         O.bottom_up_list = []
         bottom_up_set = set()

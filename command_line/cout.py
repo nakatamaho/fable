@@ -6,6 +6,18 @@ import hashlib
 import optparse
 import os
 import sys
+import subprocess
+
+# Minimal replacements for libtbx helpers (standalone mode)
+
+
+class Sorry(RuntimeError):
+    """Minimal replacement for libtbx.utils.Sorry."""
+
+
+def show_string(value):
+    """Minimal replacement for libtbx.str_utils.show_string."""
+    return repr(value)
 
 
 def compute_hexdigest(text):
@@ -31,7 +43,6 @@ def check_fingerprint(file_name):
 
 
 def write_only_if_safe(file_name, text):
-    from libtbx.str_utils import show_string
     if (os.path.exists(file_name)):
         if (not os.path.isfile(file_name)):
             raise RuntimeError(
@@ -47,7 +58,6 @@ def write_only_if_safe(file_name, text):
 
 
 class process(object):
-
     __slots__ = ["options", "dynamic_parameters", "n_calls"]
 
     def __init__(O, options):
@@ -56,7 +66,6 @@ class process(object):
             O.dynamic_parameters = None
         else:
             from fable.cout import dynamic_parameter_props
-            from libtbx.utils import Sorry
             O.dynamic_parameters = []
             for opt_dp in options.dynamic_parameter:
                 flds = opt_dp.replace("=", " ").split()
@@ -102,25 +111,21 @@ class process(object):
                                       link=opts.link, file_name_cpp="fable_cout.cpp", show_command=True)
             print()
             if (opts.run):
-                from libtbx import easy_run
                 cmd = os.path.join(".", out_name)
                 if (opts.valgrind):
                     cmd = "valgrind " + cmd
                 print(cmd)
-                easy_run.call(command=cmd)
+                subprocess.check_call(cmd, shell=True)
 
 
 def run(args):
-    import libtbx.load_env
     if (len(args) == 0):
         args = ["--help"]
     elif (args == ["--example"]):
-        args = [
-            libtbx.env.under_dist(module_name="fable", path="test/valid/sf.f"),
-            "--namespace", "example",
-            "--run"]
-    parser = optparse.OptionParser(
-        usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+        example_f = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), os.pardir, "test", "valid", "sf.f"))
+        args = [example_f, "--namespace", "example", "--run"]
+    parser = optparse.OptionParser(usage="%prog [options] fortran_file ...")
     parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
     parser.add_option("--compile", action="store_true", default=False)
     parser.add_option("--link", action="store_true", default=False)

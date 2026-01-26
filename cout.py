@@ -1,12 +1,58 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import product
-from libtbx import group_args
-from libtbx import mutable
-from libtbx import Auto
+import math
 import os.path
 
 fmt_comma_placeholder = chr(255)
 
+def _dist_path(*parts):
+    """Return an absolute path under this local checkout (no libtbx.env)."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_dir, *parts)
+
+def iround(x):
+    # Match libtbx.math_utils.iround: round-half-away-from-zero
+    if x < 0:
+        return int(x - 0.5)
+    return int(x + 0.5)
+
+def iceil(x):
+    # Match libtbx.math_utils.iceil
+    return iround(math.ceil(x))
+
+def product(seq):
+    """Minimal replacement for libtbx.utils.product (numeric product).
+    Returns None for an empty sequence (matches libtbx behavior).
+    """
+    result = None
+    for val in seq:
+        result = val if result is None else result * val
+    return result
+
+class _AutoType:
+    def __repr__(self):
+        return "Auto"
+Auto = _AutoType()
+
+class group_args:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    def __repr__(self):
+        args = ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items())
+        return f"group_args({args})"
+
+class mutable:
+    """
+    Minimal replacement for libtbx.mutable.
+
+    Usage:
+        flag = mutable(value=False)
+        flag.value = True
+    """
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    def __repr__(self):
+        args = ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items())
+        return f"mutable({args})"
 
 def break_line_if_necessary(callback, line, max_len=80, min_len=70):
     def cb_finalize(line):
@@ -66,7 +112,6 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
             ic += 1
     potential_break_points.append((0, nc))
     n = nc - i_start
-    from libtbx.math_utils import iround, iceil
     l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
     b = 0
     f = 0
@@ -290,9 +335,9 @@ class major_types_cache(object):
     def __contains__(O, value):
         if (O.identifiers is None):
             O.identifiers = set()
-            import libtbx.load_env
-            hpp = libtbx.env.under_dist(
-                module_name="fable", path="fem/major_types.hpp", test=os.path.isfile)
+            hpp = _dist_path("fem", "major_types.hpp")
+            if (not os.path.isfile(hpp)):
+                raise FileNotFoundError(hpp)
             using_fem = "  using fem::"
             with open(hpp) as f:
                 lines = f.read().splitlines()
