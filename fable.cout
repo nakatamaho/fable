@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Use the 'fable' package that lives next to this script.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+fable_root="${FABLE_ROOT:-${script_dir}}"
+
+if [[ ! -f "${fable_root}/__init__.py" ]]; then
+  echo "Error: fable package root not found: ${fable_root} (missing __init__.py)." >&2
+  exit 1
+fi
+
+# Make 'fable' importable: PYTHONPATH must include the parent directory of the package.
+fable_parent="$(cd "$(dirname "${fable_root}")" && pwd -P)"
+export PYTHONPATH="${fable_parent}:${PYTHONPATH:-}"
+
+py="${PYTHON:-python3}"
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: fable.cout <input_fortran_file> [-- extra args to cout]" >&2
+  exit 2
+fi
+
+input="$1"
+shift
+
+# Run the module from the local 'fable' package.
+exec "${py}" - "${input}" "$@" <<'PY'
+import runpy
+import sys
+
+# Keep argv as: [module_name, ...original args...]
+sys.argv[0] = "fable.command_line.cout"
+
+runpy.run_module("fable.command_line.cout", run_name="__main__")
+PY
