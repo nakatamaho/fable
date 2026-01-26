@@ -1,8 +1,28 @@
-# Fable a Fortran-to-C++ translator (a fork)
+# Fable: a Fortran-to-C++ translator (fork)
 
 This repository is a fork of **Fable**, a Fortran-to-C++ translator.
 It includes a small wrapper script `fable.cout` to run the local checkout
 reliably (without depending on a separately-installed `fable`/`fable_org`).
+
+## Upstream (original project)
+
+- https://cci.lbl.gov/fable/
+
+## Citation
+
+If you use FABLE in academic work, please cite:
+
+Grosse-Kunstleve RW, Terwilliger TC, Sauter NK, Adams PD.
+Automatic Fortran to C++ conversion with FABLE.
+*Source Code for Biology and Medicine.* 2012;7:5.
+DOI: 10.1186/1751-0473-7-5
+
+Links:
+
+- DOI: https://doi.org/10.1186/1751-0473-7-5
+- Publisher page: https://link.springer.com/article/10.1186/1751-0473-7-5
+- PubMed: https://pubmed.ncbi.nlm.nih.gov/22640868/
+- PMC (full text): https://pmc.ncbi.nlm.nih.gov/articles/PMC3448510/
 
 ## Requirements
 
@@ -86,7 +106,7 @@ always use the `fable` package from this checkout.
   directory contains `__init__.py` at the repository root.
 
 * Script says "not inside a git repository"
-  This fork’s wrapper does not require a git toplevel lookup. If you see
+  This fork's wrapper does not require a git toplevel lookup. If you see
   that error, you are likely running an older wrapper. Update `fable.cout`
   to the version in this fork.
 
