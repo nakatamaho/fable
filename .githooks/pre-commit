@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Format only staged files and re-add them.
+
+CLANG_FORMAT_STYLE='{
+  BasedOnStyle: LLVM,
+  IndentWidth: 4,
+  ColumnLimit: 10000,
+  SortIncludes: false,
+  AlignEscapedNewlines: LeftWithLastLine,
+  SpaceBeforeRangeBasedForLoopColon: false,
+  PointerAlignment: Right,
+  NamespaceIndentation: Inner,
+  AlwaysBreakTemplateDeclarations: No,
+  BreakBeforeConceptDeclarations: Never,
+  ReflowComments: false,
+  SpacesInLineCommentPrefix: { Minimum: 1, Maximum: 1 }
+}'
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+format_file() {
+  local f="$1"
+
+  case "$f" in
+    *.c|*.cc|*.cpp|*.cxx|*.h|*.hh|*.hpp|*.hxx)
+      command -v clang-format-19 >/dev/null 2>&1 || {
+        echo "ERROR: clang-format-19 not found" >&2
+        exit 1
+      }
+      clang-format-19 -i  -style="$CLANG_FORMAT_STYLE" "$f"
+      git add "$f"
+      ;;
+    *.py)
+      command -v autopep8 >/dev/null 2>&1 || {
+        echo "ERROR: autopep8 not found" >&2
+        exit 1
+      }
+      autopep8 --in-place --aggressive --aggressive "$f"
+      git add "$f"
+      ;;
+    *.sh|*.bash)
+      command -v shfmt >/dev/null 2>&1 || {
+        echo "ERROR: shfmt not found" >&2
+        exit 1
+      }
+      shfmt -w -i 4 -ci -sr "$f"
+      git add "$f"
+
+      if command -v shellcheck >/dev/null 2>&1; then
+        shellcheck "$f"
+      fi
+      ;;
+    */Makefile|Makefile|GNUmakefile|*.mk|*.mak)
+      if command -v checkmake >/dev/null 2>&1; then
+        checkmake "$f"
+      fi
+      ;;
+    *)
+      ;;
+  esac
+}
+
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  format_file "$f"
+done <<< "$staged_files"
+
+exit 0
