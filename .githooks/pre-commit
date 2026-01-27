@@ -29,6 +29,7 @@ format_file() {
         echo "ERROR: clang-format-19 not found" >&2
         exit 1
       }
+      echo "[pre-commit] clang-format-19: $f" >&2
       clang-format-19 -i  -style="$CLANG_FORMAT_STYLE" "$f"
       git add "$f"
       ;;
@@ -38,7 +39,7 @@ format_file() {
         exit 1
       }
       echo "[pre-commit] autopep8: $f" >&2
-      autopep8 --in-place --aggressive --aggressive "$f"
+      autopep8 --in-place --max-line-length 1000 "$f"
       git add "$f"
       ;;
     *.sh|*.bash)
