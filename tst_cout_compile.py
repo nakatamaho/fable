@@ -304,6 +304,12 @@ class process_file_info(object):
                                     else:
                                         assert not have_diffs
                                 if (have_diffs):
+                                    print(f"=== DIFF for {file_name} ===")
+                                    print(f"actual text: {repr(text)}")
+                                    print(f"expected: {repr(chr(10).join(info.out_lines))}")
+                                    print(have_diffs)
+                                    print("=== END DIFF ===")
+
                                     if (exe_name is fem_exe_name):
                                         assert_not_have_diffs()
                                     elif (exe_name is ifort_exe_name):

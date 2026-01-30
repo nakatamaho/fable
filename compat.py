@@ -375,11 +375,15 @@ def approx_equal(a: float, b: float, eps: float = 1e-6) -> bool:
 
 def show_diff(actual, expected, fromfile: str = "actual", tofile: str = "expected") -> str:
     if isinstance(actual, (list, tuple)):
-        actual = "".join(actual)
+        actual = "\n".join(actual)
+        if actual:
+            actual += "\n"
     else:
         actual = str(actual)
     if isinstance(expected, (list, tuple)):
-        expected = "".join(expected)
+        expected = "\n".join(expected)
+        if expected:
+            expected += "\n"
     else:
         expected = str(expected)
     if actual == expected:
