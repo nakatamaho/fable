@@ -358,7 +358,8 @@ def run_combinations(
                             relative_path="lapack_fem/dsyev_test.cpp",
                             test=op.isfile,
                             optional=False)
-                        build_cmd_compl = build_cmd + finalize_cpp_build_cmd(cpp_source)
+                        build_cmd_compl = build_cmd + \
+                            finalize_cpp_build_cmd(cpp_source)
                     utime = build_run(
                         setup_cmd=setup_cmd,
                         ld_preload_flag=ld_preload_flag,

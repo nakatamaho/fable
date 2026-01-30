@@ -1,179 +1,223 @@
+# simple_compilation.py
 from __future__ import absolute_import, division, print_function
+
 import os
-op = os.path
+import os.path as op
+import shlex
+
+from fable.compat import (
+    repo_root,
+    full_command_path,
+    get_gcc_version,
+    easy_run,
+    Sorry,
+)
 
 
-def quote(s):
-    assert s.find('"') < 0
-    return '"'+s+'"'
+def _split_flags(s):
+    if s is None:
+        return []
+    s = str(s).strip()
+    if not s:
+        return []
+    return shlex.split(s)
 
 
-def quote_list(l):
-    return " ".join([quote(s) for s in l])
+def _split_paths(s):
+    if s is None:
+        return []
+    s = str(s).strip()
+    if not s:
+        return []
+    return [p for p in s.split(":") if p]
 
 
 class environment(object):
+    """
+    Standalone compilation environment (no libtbx).
 
-    __slots__ = [
-        "compiler",
-        "obj_suffix",
-        "exe_suffix",
-        "pch_suffix",
-        "compiler_path",
-        "gcc_version",
-        "fable_dist",
-        "tbxx_root",
-        "__have_pch"]
+    Environment variables for MPLAPACK integration:
+      - FABLE_CXX / FABLE_COMPILER: C++ compiler (default: g++)
+      - FABLE_CXXSTD: C++ standard (default: c++11)
+      - FABLE_CPPFLAGS: preprocessor flags
+      - FABLE_CXXFLAGS: compiler flags
+      - FABLE_INCLUDE_DIRS: colon-separated include dirs
+      - FABLE_LDFLAGS: linker flags
+      - FABLE_LIB_DIRS: colon-separated library dirs
+      - FABLE_LIBS: extra libs/flags (string appended as-is)
+      - FABLE_BUILD_DIR: build directory (optional; default: <repo_root>/build)
+    """
 
-    def __init__(O, compiler=None):
-        if (os.name == "nt"):
-            O.compiler = "cl"
-            O.obj_suffix = ".obj"
-            O.exe_suffix = ".exe"
-            O.pch_suffix = None
-        else:
-            O.compiler = "g++"
-            O.obj_suffix = ".o"
-            O.exe_suffix = ""
-            O.pch_suffix = ".gch"
-        if (compiler is not None):
-            O.compiler = compiler
-        compiler_from_os_environ = os.environ.get("FABLE_COMPILER")
-        if (compiler_from_os_environ is not None):
-            O.compiler = compiler_from_os_environ
-        from libtbx.path import full_command_path
-        O.compiler_path = full_command_path(command=O.compiler+O.exe_suffix)
-        import libtbx.load_env
-        if (O.compiler == "g++" and O.compiler_path is not None):
-            O.gcc_version = libtbx.env_config.get_gcc_version(
-                command_name=O.compiler)
-        else:
-            O.gcc_version = None
-        O.fable_dist = libtbx.env.dist_path(module_name="fable")
-        if (op.isdir(op.join(O.fable_dist, "tbxx"))):
-            O.tbxx_root = None
-        else:
-            O.tbxx_root = op.dirname(libtbx.env.dist_path(module_name="tbxx"))
-        O.__have_pch = False
+    def __init__(self, compiler=None):
+        self.fable_dist = str(repo_root())
+        self.build_dir = os.environ.get(
+            "FABLE_BUILD_DIR", op.join(self.fable_dist, "build"))
+        os.makedirs(self.build_dir, exist_ok=True)
 
-    def set_have_pch(O):
-        O.__have_pch = True
+        self.compiler = (
+            compiler
+            or os.environ.get("FABLE_CXX")
+            or os.environ.get("FABLE_COMPILER")
+            or "g++"
+        )
+        self.compiler_path = full_command_path(self.compiler)
+        self.gcc_version = get_gcc_version(self.compiler)
 
-    def assemble_include_search_paths(O, no_quotes=False):
-        if (O.compiler == "cl"):
-            sw = "/"
-        else:
-            sw = "-"
+        self.exe_suffix = ".exe" if os.name == "nt" else ""
+        self.have_pch = False
 
-        def add_to_include_search_path(path):
-            if (path is None):
-                return ""
-            if (not no_quotes):
-                path = quote(path)
-            return " %sI%s" % (sw, path)
-        return "%s%s" % (
-            add_to_include_search_path(O.fable_dist),
-            add_to_include_search_path(O.tbxx_root))
+        self.cxxstd = os.environ.get("FABLE_CXXSTD", "c++11")
+        self.cppflags = _split_flags(os.environ.get("FABLE_CPPFLAGS", ""))
+        self.cxxflags = _split_flags(os.environ.get("FABLE_CXXFLAGS", ""))
+        self.ldflags = _split_flags(os.environ.get("FABLE_LDFLAGS", ""))
 
-    def assemble_command(O,
-                         link,
-                         disable_warnings,
-                         file_names,
-                         out_name):
-        qon = quote(out_name)
-        import libtbx.load_env
-        if (O.compiler == "cl"):
-            if (not link):
-                part = "/c /Fo%s" % qon
-            else:
-                part = "/Fe%s" % qon
-            result = "%s /nologo /EHsc %s%s %s" % (
-                O.compiler,
-                part,
-                O.assemble_include_search_paths(),
-                quote_list(file_names))
-        else:
-            if (not link):
-                opt_c = "-c "
-            else:
-                opt_c = ""
-            if (disable_warnings or O.gcc_version < 30400):
-                opt_w = "-w"
-            else:
-                opt_w = "-Wall -Wno-sign-compare -Winvalid-pch -Wno-deprecated-declarations"
-            if (out_name.endswith(O.pch_suffix)):
-                assert not O.__have_pch
-                opt_x = " -x c++-header"
-            else:
-                opt_x = ""
-            if (not O.__have_pch):
-                opt_i = O.assemble_include_search_paths()
-            else:
-                opt_i = " -I."
-            if libtbx.env.build_options.enable_cxx11:
-                opt_11 = " -std=c++11"
-            else:
-                opt_11 = ""
-            result = "%s -o %s %s%s -g -O0%s%s%s %s" % (
-                O.compiler, qon, opt_c, opt_w, opt_i, opt_x, opt_11, quote_list(file_names))
-            print(result)
-        return result
+        include_dirs = [self.fable_dist]
+        include_dirs += _split_paths(os.environ.get("FABLE_INCLUDE_DIRS", ""))
+        self.include_dirs = include_dirs
 
-    def file_name_obj(O, file_name_cpp):
-        assert file_name_cpp.endswith(".cpp")
-        return file_name_cpp[:-4] + O.obj_suffix
+        lib_dirs = _split_paths(os.environ.get("FABLE_LIB_DIRS", ""))
+        self.lib_dirs = lib_dirs
 
-    def file_name_exe(O, exe_root):
-        return exe_root + O.exe_suffix
+        # Kept as a raw string so users can pass complex flags easily.
+        self.libs = os.environ.get("FABLE_LIBS", "").strip()
 
-    def compilation_command(O, file_name_cpp, disable_warnings=False):
-        return O.assemble_command(
-            link=False,
-            disable_warnings=disable_warnings,
-            file_names=[file_name_cpp],
-            out_name=O.file_name_obj(file_name_cpp=file_name_cpp))
+    def set_have_pch(self):
+        self.have_pch = True
 
-    def link_command(O, file_names_obj, exe_root):
-        return O.assemble_command(
-            link=True,
-            disable_warnings=False,
-            file_names=file_names_obj,
-            out_name=O.file_name_exe(exe_root=exe_root))
+    def _mk_cmd(self, args):
+        return " ".join(shlex.quote(a) for a in args)
 
-    def build(O,
-              link,
-              file_name_cpp,
-              obj_name=None,
-              exe_name=None,
-              pch_name=None,
-              disable_warnings=False,
-              show_command=False,
-              Error=RuntimeError):
-        assert [obj_name, exe_name, pch_name].count(None) >= 2
-        if (link):
-            out_name = exe_name
-            out_suffix = O.exe_suffix
-        elif (pch_name is None):
-            out_name = obj_name
-            out_suffix = O.obj_suffix
-        else:
-            assert O.pch_suffix is not None
-            out_name = pch_name + O.pch_suffix
-            out_suffix = None
-        if (out_name is None):
-            assert file_name_cpp.endswith(".cpp")
-            out_name = file_name_cpp[:-4] + out_suffix
-        from libtbx.utils import remove_files
-        remove_files(out_name)
-        cmd = O.assemble_command(
-            link=link,
-            disable_warnings=disable_warnings,
-            file_names=[file_name_cpp],
-            out_name=out_name)
-        if (show_command):
-            print(cmd)
-        from libtbx import easy_run
-        buffers = easy_run.fully_buffered(command=cmd)
-        if (O.compiler != "cl" or buffers.stderr_lines != [file_name_cpp]):
-            buffers.raise_if_errors(Error=Error)
-        return out_name
+    def _common_flags(self, disable_warnings=False):
+        """Build common compiler flags used for both compilation and linking."""
+        include_flags = []
+        for d in self.include_dirs:
+            include_flags += ["-I", d]
+
+        common_flags = []
+        common_flags += ["-std=%s" % self.cxxstd]
+        common_flags += include_flags
+        common_flags += self.cppflags
+        common_flags += self.cxxflags
+        if disable_warnings:
+            common_flags += ["-w"]
+        return common_flags
+
+    def _libdir_flags(self):
+        """Build library directory flags."""
+        libdir_flags = []
+        for d in self.lib_dirs:
+            libdir_flags += ["-L", d]
+        return libdir_flags
+
+    def file_name_obj(self, file_name_cpp):
+        root, _ = os.path.splitext(file_name_cpp)
+        return root + (".obj" if os.name == "nt" else ".o")
+
+    def file_name_exe(self, exe_root):
+        """Generate executable file name from root name."""
+        return exe_root + self.exe_suffix
+
+    def compilation_command(self, file_name_cpp, disable_warnings=False):
+        """Generate compilation command string for a C++ source file.
+
+        Args:
+            file_name_cpp: Path to C++ source file
+            disable_warnings: If True, suppress warnings
+
+        Returns:
+            Complete compilation command string
+        """
+        if self.compiler_path is None:
+            raise RuntimeError(
+                "C++ compiler not available: %s" % self.compiler)
+
+        obj = self.file_name_obj(file_name_cpp)
+        common_flags = self._common_flags(disable_warnings=disable_warnings)
+        cmd = [self.compiler_path] + common_flags + \
+            ["-c", file_name_cpp, "-o", obj]
+        return self._mk_cmd(cmd)
+
+    def link_command(self, file_names_obj, exe_root):
+        """Generate link command string for object files.
+
+        Args:
+            file_names_obj: List of object file paths
+            exe_root: Base name for output executable
+
+        Returns:
+            Complete link command string
+        """
+        if self.compiler_path is None:
+            raise RuntimeError(
+                "C++ compiler not available: %s" % self.compiler)
+
+        exe = self.file_name_exe(exe_root)
+        libdir_flags = self._libdir_flags()
+        cmd = [self.compiler_path] + file_names_obj + \
+            ["-o", exe] + libdir_flags + self.ldflags
+        if self.libs:
+            cmd += _split_flags(self.libs)
+        return self._mk_cmd(cmd)
+
+    def build(
+        self,
+        exe_name=None,
+        link=True,
+        file_name_cpp=None,
+        show_command=False,
+        disable_warnings=False,
+        Error=RuntimeError,
+        pch_name=None,
+    ):
+        if file_name_cpp is None:
+            raise Error("file_name_cpp is required")
+        if self.compiler_path is None:
+            raise Error("C++ compiler not available: %s" % self.compiler)
+
+        file_name_cpp = str(file_name_cpp)
+
+        common_flags = self._common_flags(disable_warnings=disable_warnings)
+        libdir_flags = self._libdir_flags()
+
+        # Precompiled header build (optional)
+        if pch_name is not None:
+            # GCC uses <header>.gch next to the header.
+            out_pch = file_name_cpp + ".gch"
+            cmd = [self.compiler_path] + common_flags + \
+                ["-x", "c++-header", file_name_cpp, "-o", out_pch]
+            cmd_str = self._mk_cmd(cmd)
+            if show_command:
+                print(cmd_str)
+            buffers = easy_run.fully_buffered(command=cmd_str)
+            buffers.raise_if_errors_or_output(Error=Error)
+            return out_pch
+
+        if link:
+            out = exe_name
+            if out is None:
+                base = op.splitext(op.basename(file_name_cpp))[0]
+                out = base + self.exe_suffix
+            cmd = [self.compiler_path] + common_flags + \
+                [file_name_cpp, "-o", out] + libdir_flags + self.ldflags
+            if self.libs:
+                cmd += _split_flags(self.libs)
+            cmd_str = self._mk_cmd(cmd)
+            if show_command:
+                print(cmd_str)
+            buffers = easy_run.fully_buffered(command=cmd_str)
+            buffers.raise_if_errors_or_output(Error=Error)
+            return out
+
+        # Compile only -> object file
+        base = exe_name
+        if base is None:
+            base = op.splitext(op.basename(file_name_cpp))[0]
+        obj = op.splitext(base)[0] + ".o"
+        cmd = [self.compiler_path] + common_flags + \
+            ["-c", file_name_cpp, "-o", obj]
+        cmd_str = self._mk_cmd(cmd)
+        if show_command:
+            print(cmd_str)
+        buffers = easy_run.fully_buffered(command=cmd_str)
+        buffers.raise_if_errors_or_output(Error=Error)
+        return obj

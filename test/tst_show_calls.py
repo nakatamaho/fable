@@ -1,14 +1,13 @@
 from __future__ import absolute_import, division, print_function
+from fable.compat import under_dist
 
 
 def run(args):
     assert len(args) == 0
-    import libtbx.load_env
     from io import StringIO
     import os
     op = os.path
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     excluded_file_names = set("""\
 blockdata_unnamed.f
 """.splitlines())

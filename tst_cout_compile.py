@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import fable.cout
+import os
 
 file_names_disable_warnings = set("""\
 add_reals.f
@@ -149,9 +150,7 @@ class process_file_info(object):
         O.test_valid = test_valid
 
     def __call__(O, file_info):
-        from libtbx import easy_run
-        from libtbx.str_utils import show_string
-        from libtbx.test_utils import show_diff
+        from fable.compat import easy_run, show_string, show_diff
         from io import StringIO
         import os.path as op
         import sys
@@ -373,8 +372,7 @@ klmno
         f.write(b"\r\r\n".join(lines)+b"\r\n")
     with open("mac.txt", "wb") as f:
         f.write(b"\r".join(lines)+b"\r")
-    from libtbx import easy_run
-    from libtbx.utils import remove_files
+    from fable.compat import easy_run, remove_files
     import os
     op = os.path
     expected_outputs = [
@@ -383,7 +381,7 @@ klmno
         b"a\r  \nbc\r \ndef\r\nghij\nklmn\n",
         b"a\rbc\n"]
     for vers, expected in zip(["unix", "dos", "dos2", "mac"], expected_outputs):
-        remove_files(paths=["read_lines_out"])
+        remove_files(["read_lines_out"])
         cmd = "%s < %s.txt > read_lines_out" % (op.join(".", exe_name), vers)
         if (verbose):
             print(cmd)
@@ -402,9 +400,9 @@ def exercise_compile_valid(regex_patterns, opts):
         print("Skipping exercise_compile_valid(): %s not available." %
               comp_env.compiler)
         return
-    import libtbx.load_env
     import os.path as op
-    fable_dist = libtbx.env.dist_path(module_name="fable")
+    from fable.compat import repo_root
+    fable_dist = str(repo_root())
     test_valid = op.join(fable_dist, "test/valid")
     selected_file_names_and_expected_cout = regex_select(
         keyed_lists=read_file_names_and_expected_cout(test_valid=test_valid),
@@ -439,34 +437,55 @@ def exercise_compile_valid(regex_patterns, opts):
 
 
 def run(args):
-    from libtbx.option_parser import option_parser
-    command_line = (option_parser(
+    import optparse
+    import multiprocessing
+
+    def default_cpu_count():
+        try:
+            return multiprocessing.cpu_count()
+        except NotImplementedError:
+            return 1
+
+    parser = optparse.OptionParser(
         usage="fable.python %s [options] regex_pattern ..." % __file__)
-        .enable_multiprocessing()
-        .option(None, "--dry_run",
-                action="store_true",
-                default=False)
-        .option(None, "--valgrind",
-                action="store_true",
-                default=False)
-        .option(None, "--ifort",
-                action="store_true",
-                default=False)
-        .option(None, "--keep_going",
-                action="store_true",
-                default=False)
-        .option(None, "--pch",
-                action="store_true",
-                default=False)
-        .option(None, "--verbose",
-                action="store_true",
-                default=False)
-    ).process(args=args)
-    from libtbx.utils import show_times_at_exit
-    show_times_at_exit()
+
+    # Multiprocessing options (replacement for libtbx.option_parser.enable_multiprocessing()).
+    parser.add_option("--multiprocessing",
+                      action="store_true",
+                      default=False,
+                      help="Run tests in parallel using multiple processes.")
+    parser.add_option("--max_proc",
+                      action="store",
+                      type="int",
+                      default=default_cpu_count(),
+                      help="Maximum number of processes to use with --multiprocessing.")
+
+    # Original options (kept for compatibility).
+    parser.add_option("--dry_run",
+                      action="store_true",
+                      default=False)
+    parser.add_option("--valgrind",
+                      action="store_true",
+                      default=False)
+    parser.add_option("--ifort",
+                      action="store_true",
+                      default=False)
+    parser.add_option("--keep_going",
+                      action="store_true",
+                      default=False)
+    parser.add_option("--pch",
+                      action="store_true",
+                      default=False)
+    parser.add_option("--verbose",
+                      action="store_true",
+                      default=False)
+
+    (opts, regex_patterns) = parser.parse_args(args=args)
+
     n_failures = exercise_compile_valid(
-        regex_patterns=command_line.args,
-        opts=command_line.options)
+        regex_patterns=regex_patterns,
+        opts=opts)
+
     if (n_failures != 0):
         print("Done.")
     else:

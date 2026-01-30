@@ -1,14 +1,53 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import sys
+
+
+def _add_repo_root_to_sys_path():
+    """Make the repository root importable.
+
+    This test is often executed as a script:
+      $ python test/tst_command_line.py
+
+    In that mode, sys.path[0] is the test directory, so modules living at
+    the repo root (e.g. compat.py) are not importable unless we add it.
+    """
+    this_dir = os.path.abspath(os.path.dirname(__file__))
+    repo_root = os.path.abspath(os.path.join(this_dir, os.pardir))
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+    _prepend_repo_bin_to_path(repo_root)
+
+
+def _prepend_repo_bin_to_path(repo_root):
+    """Prepend <repo_root>/bin to PATH so 'fable.*' wrappers are found."""
+    bin_dir = os.path.join(repo_root, "bin")
+    if not os.path.isdir(bin_dir):
+        return
+    path = os.environ.get("PATH", "")
+    parts = path.split(os.pathsep) if path else []
+    if parts and parts[0] == bin_dir:
+        return
+    # Avoid duplicates while keeping precedence.
+    if bin_dir in parts:
+        parts = [p for p in parts if p != bin_dir]
+    os.environ["PATH"] = os.pathsep.join([bin_dir] + parts)
+
 
 def run(args):
     assert len(args) == 0
-    from libtbx import easy_run
-    import libtbx.load_env
-    import os
+    _add_repo_root_to_sys_path()
+    try:
+        from compat import easy_run
+    except ImportError:
+        # If compat.py lives inside the fable package.
+        from fable.compat import easy_run
     op = os.path
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "valid")
+    assert op.isdir(t_dir), t_dir
+
     assert t_dir.find('"') < 0
     n_errors = 0
     for command, expected_output_fragment in [

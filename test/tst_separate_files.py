@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from fable.compat import repo_root, show_string, easy_run, show_diff, show_times_at_exit
 import os
 op = os.path
 
@@ -7,7 +8,6 @@ def remove_file_if_necessary(file_name):
     if (op.isfile(file_name)):
         os.remove(file_name)
     if (op.exists(file_name)):
-        from libtbx.str_utils import show_string
         raise RuntimeError(
             "Unable to remove file: %s" % show_string(file_name))
 
@@ -20,9 +20,11 @@ def exercise(
         separate_files_separate_namespace={}):
     if (verbose):
         print("next exercise")
-    import libtbx.load_env
-    test_valid = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+
+    test_valid = str(repo_root().joinpath("test", "valid"))
+    if not op.isdir(test_valid):
+        raise FileNotFoundError(test_valid)
+
     import fable.cout
     top_cpp = fable.cout.process(
         file_names=[op.join(test_valid, "subroutine_3.f")],
@@ -34,7 +36,7 @@ def exercise(
         separate_files_separate_namespace=separate_files_separate_namespace)
     from fable import simple_compilation
     comp_env = simple_compilation.environment()
-    from libtbx import easy_run
+
     file_names_obj = []
     for file_name_cpp in file_names_cpp:
         obj = comp_env.file_name_obj(file_name_cpp=file_name_cpp)
@@ -48,7 +50,8 @@ def exercise(
     exe_root = "tst_separate_files"
     exe = comp_env.file_name_exe(exe_root=exe_root)
     remove_file_if_necessary(file_name=exe)
-    cmd = comp_env.link_command(file_names_obj=file_names_obj, exe_root=exe_root)
+    cmd = comp_env.link_command(
+        file_names_obj=file_names_obj, exe_root=exe_root)
     if (verbose):
         print(cmd)
     assert not easy_run.call(command=cmd)
@@ -56,14 +59,15 @@ def exercise(
     if (verbose):
         print(cmd)
     assert op.exists(cmd)
-    stdout = easy_run.fully_buffered(command=cmd).raise_if_errors().stdout_lines
+    buffers = easy_run.fully_buffered(command=cmd)
+    buffers.raise_if_errors()
+    stdout = buffers.stdout_lines
     text = "\n".join(stdout)
     if (verbose):
         print(text)
     from fable.tst_cout_compile import read_file_names_and_expected_cout
     info = read_file_names_and_expected_cout(test_valid=test_valid).get(
         "subroutine_3.f")[0]
-    from libtbx.test_utils import show_diff
     assert not show_diff(text, "\n".join(info.out_lines))
     if (verbose):
         print()
@@ -72,7 +76,6 @@ def exercise(
 def run(args):
     assert args in [[], ["--verbose"]]
     verbose = (args == ["--verbose"])
-    from libtbx.utils import show_times_at_exit
     show_times_at_exit()
     all = True
     if (0 or all):

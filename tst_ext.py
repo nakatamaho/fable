@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import fable
-from libtbx.test_utils import Exception_expected
+from fable.compat import Exception_expected
 
 
 def try_code_none(f):
@@ -454,7 +454,7 @@ def exercise_fem_utils_string_to_double():
     assert v == 0
     assert e == err_inv + '"\'" (single quote, ordinal=39)'
     assert n == ord('"')
-    from libtbx.utils import to_bytes
+    from fable.compat import to_bytes
     v, e, n = f(to_bytes(chr(134)+'x', codec='latin-1'))
     assert v == 0
     assert e == err_inv + 'ordinal=134'

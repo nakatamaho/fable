@@ -25,7 +25,8 @@ def to_bytes(value, codec="utf-8", errors="strict", encoding=None):
     if encoding is not None:
         # Keep behavior deterministic if both are provided
         if codec != "utf-8" and codec != encoding:
-            raise TypeError("to_bytes: specify only one of 'codec' or 'encoding'")
+            raise TypeError(
+                "to_bytes: specify only one of 'codec' or 'encoding'")
         codec = encoding
 
     if isinstance(value, bytes):
@@ -409,3 +410,29 @@ def anchored_block_show_diff(actual, offset: int, expected, fromfile: str = "act
     end = start + len(e_lines)
     a_block = "".join(a_lines[start:end])
     return show_diff(a_block, e, fromfile=fromfile, tofile=tofile)
+
+
+def full_command_path(command):
+    return shutil.which(command)
+
+
+def get_gcc_version(command_name="g++"):
+    exe = shutil.which(command_name)
+    if exe is None:
+        return None
+    for args in ([exe, "-dumpfullversion", "-dumpversion"], [exe, "-dumpversion"]):
+        try:
+            out = subprocess.check_output(args, text=True).strip()
+        except Exception:
+            continue
+        if not out:
+            continue
+        parts = out.split(".")
+        try:
+            major = int(parts[0])
+            minor = int(parts[1]) if len(parts) > 1 else 0
+            patch = int(parts[2]) if len(parts) > 2 else 0
+            return major * 10000 + minor * 100 + patch
+        except Exception:
+            continue
+    return None

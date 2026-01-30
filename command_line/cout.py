@@ -1,23 +1,12 @@
 """Convert Fortran sources to C++"""
 from __future__ import absolute_import, division, print_function
 import fable.cout
-
+from fable.compat import Sorry, show_string
 import hashlib
 import optparse
 import os
 import sys
 import subprocess
-
-# Minimal replacements for libtbx helpers (standalone mode)
-
-
-class Sorry(RuntimeError):
-    """Minimal replacement for libtbx.utils.Sorry."""
-
-
-def show_string(value):
-    """Minimal replacement for libtbx.str_utils.show_string."""
-    return repr(value)
 
 
 def compute_hexdigest(text):

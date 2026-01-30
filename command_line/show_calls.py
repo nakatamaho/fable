@@ -7,9 +7,8 @@ import sys
 def run(args):
     if (len(args) == 0):
         args = ["--help"]
-    import libtbx.load_env
     parser = optparse.OptionParser(
-        usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+        usage="%prog [options] fortran_file ...")
     parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
     parser.add_option("--top_procedure", action="append", type="str")
     parser.add_option("--top-procedure", action="append",

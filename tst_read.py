@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from fable import read
-from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-import libtbx.load_env
+from fable.compat import Exception_expected, approx_equal, show_diff, under_dist
 import os
 op = os.path
 
@@ -72,8 +71,7 @@ Missing terminating %s character:
 
 
 def exercise_valid(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     #
     read_already = set()
 
@@ -114,8 +112,7 @@ continue""")
 
 
 def exercise_lenient(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/lenient", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/lenient", test=op.isdir)
     #
 
     def get(file_name):
@@ -128,8 +125,8 @@ def exercise_lenient(verbose):
 
 
 def exercise_syntax_error(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/syntax_error", test=op.isdir)
+    t_dir = under_dist(module_name="fable",
+                       path="test/syntax_error", test=op.isdir)
 
     def fail(file_name):
         if (verbose):
@@ -647,8 +644,8 @@ Missing terminating ' within character format specifier "(')":""")
 
 
 def exercise_semantic_error(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/semantic_error", test=op.isdir)
+    t_dir = under_dist(module_name="fable",
+                       path="test/semantic_error", test=op.isdir)
     from fable import SemanticError
 
     def fail(file_name):
@@ -874,8 +871,8 @@ def exercise_semantic_error(verbose):
 
 
 def exercise_unsupported(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/unsupported", test=op.isdir)
+    t_dir = under_dist(module_name="fable",
+                       path="test/unsupported", test=op.isdir)
 
     def fail(file_name):
         if (verbose):
@@ -906,8 +903,7 @@ def exercise_unsupported(verbose):
 
 
 def exercise_tokens_as_string(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     from fable.tokenization import tokens_as_string
     for file_name in sorted(os.listdir(t_dir)):
         if (not file_name.endswith(".f")):
@@ -930,8 +926,7 @@ def exercise_tokens_as_string(verbose):
 
 
 def exercise_show():
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     all_fprocs = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
     from io import StringIO
     cio = StringIO()
@@ -946,14 +941,13 @@ $   blockdata: 0
 
 
 def exercise_build_fprocs_by_name():
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     for pair in [
         ("subroutine_3.f", "subroutine_4.f"),
             ("implied_program.f", "implied_program.f")]:
         file_names = [op.join(t_dir, file_name) for file_name in pair]
         all_fprocs = read.process(file_names=file_names)
-        from libtbx.utils import Sorry
+        from fable.read import Sorry
         try:
             all_fprocs.fprocs_by_name()
         except Sorry as e:
@@ -971,8 +965,7 @@ Fortran procedure name conflict:
 
 
 def exercise_eval_const_expression_simple(verbose):
-    t_dir = libtbx.env.under_dist(
-        module_name="fable", path="test/valid", test=op.isdir)
+    t_dir = under_dist(module_name="fable", path="test/valid", test=op.isdir)
     file_name = "const_expressions.f"
     all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
     assert len(all_fprocs.all_in_input_order) == 2

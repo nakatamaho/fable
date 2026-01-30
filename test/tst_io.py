@@ -31,7 +31,8 @@ class build_cmds_class(object):
             assert op.exists("a.out")
             result.append("a.out")
         # remove_file("fable_cout")
-        cmd = "fable.cout %s --link --exe_name=fable_cout%02d" % (tst_f, self.iteration)
+        cmd = "fable.cout %s --link --exe_name=fable_cout%02d" % (
+            tst_f, self.iteration)
         if (opts.verbose):
             print(cmd)
         easy_run.fully_buffered(command=cmd).raise_if_errors()

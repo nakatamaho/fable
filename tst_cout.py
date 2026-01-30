@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from fable import cout
-from libtbx.test_utils import \
-    Exception_expected, show_diff, anchored_block_show_diff as absd
-import libtbx.load_env
+from fable.compat import Exception_expected, show_diff, under_dist, anchored_block_show_diff as absd
 from io import StringIO
 import os
 op = os.path
@@ -22,7 +20,7 @@ common_argc_argv = """\
 
 
 def exercise_simple(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/valid", test=op.isdir)
 
     def get(
@@ -44,8 +42,9 @@ def exercise_simple(verbose):
             inline_all=inline_all,
             common_report_stringio=common_report_stringio)
     #
-    assert not show_diff(get("add_reals.f"), """\
-#include <fem.hpp> // Fortran EMulation library of fable module
+    result_add_reals = get("add_reals.f")
+    print("DEBUG RESULT:", repr(result_add_reals[:200]))
+    assert not show_diff(result_add_reals, """#include <fem.hpp> // Fortran EMulation library of fable module
 
 namespace placeholder_please_replace {
 
@@ -3097,7 +3096,7 @@ sub1(
 
 
 def exercise_syntax_error(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/syntax_error", test=op.isdir)
     from fable.read import Error
 
@@ -3135,7 +3134,7 @@ def exercise_syntax_error(verbose):
 
 
 def exercise_semantic_error(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/semantic_error", test=op.isdir)
     from fable import SemanticError
 
@@ -3184,7 +3183,7 @@ def exercise_semantic_error(verbose):
 
 
 def exercise_unsupported(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/unsupported", test=op.isdir)
 
     def get(file_name):
@@ -3203,7 +3202,7 @@ def exercise_unsupported(verbose):
 
 
 def exercise_dynamic_parameters(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/valid", test=op.isdir)
 
     def get(file_name, dynamic_parameters):
@@ -3339,7 +3338,7 @@ struct sub_save
 
 
 def exercise_common_equivalence_simple(verbose):
-    t_dir = libtbx.env.under_dist(
+    t_dir = under_dist(
         module_name="fable", path="test/valid", test=op.isdir)
 
     def get(file_name, common_names, expected_common_report=None):

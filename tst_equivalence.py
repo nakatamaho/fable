@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import fable.equivalence
+from fable.compat import Exception_expected
 
 
 def fem_array_alignment(members_size, i_mbr_byte_offset_pairs):
@@ -24,7 +25,7 @@ def check_array_alignment(array_alignment, n, pairs):
 
 
 def exercise_given_members_size(array_alignment, n, n_trials=10):
-    from libtbx.math_utils import random_permutation_in_place
+    from fable.compat import random_permutation_in_place
     import random
     random.seed(0)
     i_mbrs = list(range(n))
@@ -85,7 +86,6 @@ def exercise_given_members_size(array_alignment, n, n_trials=10):
 
 
 def exercise_exceptions(array_alignment):
-    from libtbx.test_utils import Exception_expected
     for n, pairs in [
         (2, [((0, 0), (0, 1))]),
             (2, [((0, 0), (1, 0)), ((0, 0), (1, 1))])]:

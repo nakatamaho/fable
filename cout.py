@@ -1,58 +1,10 @@
 from __future__ import absolute_import, division, print_function
+from fable.compat import product, Auto, group_args, mutable, iround, iceil, dist_path as _dist_path, show_string
 import math
 import os.path
 
 fmt_comma_placeholder = chr(255)
 
-def _dist_path(*parts):
-    """Return an absolute path under this local checkout (no libtbx.env)."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_dir, *parts)
-
-def iround(x):
-    # Match libtbx.math_utils.iround: round-half-away-from-zero
-    if x < 0:
-        return int(x - 0.5)
-    return int(x + 0.5)
-
-def iceil(x):
-    # Match libtbx.math_utils.iceil
-    return iround(math.ceil(x))
-
-def product(seq):
-    """Minimal replacement for libtbx.utils.product (numeric product).
-    Returns None for an empty sequence (matches libtbx behavior).
-    """
-    result = None
-    for val in seq:
-        result = val if result is None else result * val
-    return result
-
-class _AutoType:
-    def __repr__(self):
-        return "Auto"
-Auto = _AutoType()
-
-class group_args:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-    def __repr__(self):
-        args = ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items())
-        return f"group_args({args})"
-
-class mutable:
-    """
-    Minimal replacement for libtbx.mutable.
-
-    Usage:
-        flag = mutable(value=False)
-        flag.value = True
-    """
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-    def __repr__(self):
-        args = ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items())
-        return f"mutable({args})"
 
 def break_line_if_necessary(callback, line, max_len=80, min_len=70):
     def cb_finalize(line):
@@ -2811,7 +2763,7 @@ def generate_common_report(
     if (len(report.getvalue()) != 0 and stringio is None):
         import sys
         report_file_name = "fable_cout_common_report"
-        from libtbx.str_utils import show_string
+        from fable.compat import show_string
         print("Writing file:", show_string(report_file_name), file=sys.stderr)
         open(report_file_name, "w").write(report.getvalue())
     #
@@ -2975,6 +2927,7 @@ def convert_commons(
             and dynamic_parameters is None):
         callback("")
         callback("using fem::common;")
+        callback("")
         return
     callback("")
     callback("struct common :")
@@ -3030,9 +2983,10 @@ def open_namespace(callback, namespace, using_namespace_major_types=True):
     ns = namespace.split("::")
     for component in ns:
         callback("namespace %s {" % component)
+    callback("")
     if (using_namespace_major_types):
-        callback("""
-using namespace fem::major_types;""")
+        callback("using namespace fem::major_types;")
+        callback("")
     return ns
 
 
@@ -3173,7 +3127,7 @@ def process(
         else:
             prev_line = result[-1]
         lines = break_lines(cpp_text=[line+"\n"], prev_line=prev_line)
-        if (len(lines) != 0):
+        if any(line for line in lines):
             if (debug):
                 print("\n".join(lines))
             result.extend(lines)
@@ -3216,9 +3170,8 @@ def process(
         callback(include_with_prefix("cmn"))
     else:
         callback(include_fem_hpp)
+        callback("")
         need_using_major_types = True
-    callback("")
-    if (not need_function_hpp):
         if (include_separate(callback=callback)):
             callback("")
     open_namespace(
@@ -3500,4 +3453,4 @@ def process(
         with open(top_cpp_file_name, "w") as f:
             print("\n".join(result), file=f)
     #
-    return result
+    return "\n".join(result) + "\n"

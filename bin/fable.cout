@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Use the 'fable' package that lives next to this script.
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 fable_root="${FABLE_ROOT:-${script_dir}}"
 
 if [[ ! -f "${fable_root}/__init__.py" ]]; then
