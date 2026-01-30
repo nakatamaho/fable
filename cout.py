@@ -126,7 +126,11 @@ def break_lines(cpp_text, prev_line=None):
                 or not line.lstrip().startswith("//C")):
             result.append(line)
             prev_line[0] = line
-    for line in "\n".join(cpp_text).splitlines():
+    if isinstance(cpp_text, str):
+        text = cpp_text
+    else:
+        text = "\n".join(cpp_text)
+    for line in text.splitlines():
         break_line_if_necessary(callback=callback, line=line)
     return result
 
@@ -3453,4 +3457,4 @@ def process(
         with open(top_cpp_file_name, "w") as f:
             print("\n".join(result), file=f)
     #
-    return "\n".join(result) + "\n"
+    return result
